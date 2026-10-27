@@ -1,0 +1,18 @@
+{
+  "servers": {
+    "selenium": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--link-mode",
+        "copy",
+        "--directory",
+        "C:\\Users\\a.binkhaled\\Downloads\\Code\\selenium-mcp-server",
+        "selenium-mcp-server",
+        "--browser",
+        "chrome"
+      ]
+    }
+  }
+}

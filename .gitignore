@@ -8,5 +8,3 @@ __pycache__/
 build/
 dist/
 *doc.md
-pyproject.toml
-uv.lock

@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "selenium-mcp-server"
+version = "0.1.0"
+description = "A local MCP server for browser automation with Selenium"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.0.0,<2.0.0",
+    "selenium>=4.18.0",
+]
+
+[project.scripts]
+selenium-mcp-server = "selenium_mcp_server.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/selenium_mcp_server"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: tests that exercise the MCP server through stdio",
+    "live_site: tests that require access to a live website",
+]

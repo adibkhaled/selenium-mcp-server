@@ -22,13 +22,14 @@ uv run selenium-mcp-server
 The server communicates over MCP stdio; run it from an MCP client rather than as an interactive command. It starts Chrome headlessly when the first browser tool is called. Use `--headed` to show the browser window.
 
 ```text
-selenium-mcp-server [--browser chrome|chromium] [--browser-binary PATH] [--headed]
+selenium-mcp-server [--browser chrome|chromium] [--browser-binary PATH] [--headed] [--log-level LEVEL]
 ```
 
 - `--browser chrome` is the default and lets Selenium Manager locate Chrome.
 - `--browser chromium` selects Chromium from `PATH` where available.
 - `--browser-binary PATH` explicitly selects a Chrome-compatible executable, useful for Chromium installations.
 - Headless mode is the default. Add `--headed` to disable it.
+- `--log-level LEVEL` sets the logging verbosity to `DEBUG`, `INFO` (default), `WARNING`, `ERROR`, or `CRITICAL`. Server lifecycle and tool-call outcomes are logged to stderr; tool arguments and entered text are not logged.
 
 ## Verify setup
 
