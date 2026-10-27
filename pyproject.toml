@@ -15,6 +15,7 @@ dependencies = [
 
 [project.scripts]
 selenium-mcp-server = "selenium_mcp_server.server:main"
+autopilot = "autopilot.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/selenium_mcp_server", "src/autopilot"]
