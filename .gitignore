@@ -3,6 +3,9 @@ openspec
 !.github/agents/
 .github/agents/*
 !.github/agents/*.agent.md
+!.github/workflows/
+.github/workflows/*
+!.github/workflows/*.yml
 .venv/
 __pycache__/
 *.py[cod]

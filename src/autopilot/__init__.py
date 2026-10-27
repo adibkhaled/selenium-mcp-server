@@ -13,6 +13,7 @@ from .healing import (
 from .locators import Locator
 from .planning import PlanningError, TestPlan, TestPlanner, TestScenario
 from .provider import OpenAICompatibleProvider, ProviderError
+from .reporting import ReportError, TestFailure, TestResult, load_test_result, parse_junit_xml
 from .waits import AutopilotTimeoutError
 
 __all__ = [
@@ -32,10 +33,15 @@ __all__ = [
     "OpenAICompatibleProvider",
     "PlanningError",
     "ProviderError",
+    "ReportError",
     "TestGenerator",
+    "TestFailure",
     "TestPlan",
     "TestPlanner",
+    "TestResult",
     "TestScenario",
     "capture_diagnostics",
     "propose_locator_healing",
+    "load_test_result",
+    "parse_junit_xml",
 ]

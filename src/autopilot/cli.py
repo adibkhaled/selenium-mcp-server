@@ -8,9 +8,11 @@ import tempfile
 from pathlib import Path
 
 from .generation import GenerationError, TestGenerator
-from .healing import FailureAnalysis, FailureAnalyzer, FailureReport, HealingError, propose_locator_healing
+from .github import GitHubError, GitHubSettings, publish_report
+from .healing import FailureAnalyzer, FailureReport, HealingError, propose_locator_healing
 from .planning import PlanningError, TestPlan, TestPlanner
 from .provider import ProviderError, provider_from_environment
+from .reporting import ReportError, TestResult, parse_junit_xml
 
 
 _MAX_INPUT_BYTES = 1_000_000
@@ -131,6 +133,28 @@ def _build_parser() -> argparse.ArgumentParser:
     heal.add_argument("--source", type=Path, required=True)
     heal.add_argument("--output", type=Path, default=Path("artifacts/healing-proposal.json"))
     heal.add_argument("--overwrite", action="store_true")
+
+    report = commands.add_parser(
+        "report",
+        help="Convert JUnit XML results to a validated JSON report.",
+    )
+    report.add_argument("--junit", type=Path, required=True)
+    report.add_argument("--output", type=Path, default=Path("artifacts/test-results.json"))
+    report.add_argument("--overwrite", action="store_true")
+
+    github_report = commands.add_parser(
+        "github-report",
+        help="Publish or update a pull-request test summary comment.",
+    )
+    github_report.add_argument("--report", type=Path, required=True)
+    github_report.add_argument("--repository", default=os.environ.get("GITHUB_REPOSITORY"))
+    github_report.add_argument("--pull-request", type=int)
+    github_report.add_argument("--run-url", default=os.environ.get("AUTOPILOT_RUN_URL"))
+    github_report.add_argument("--api-url", default=os.environ.get("GITHUB_API_URL", "https://api.github.com"))
+    github_report.add_argument(
+        "--workflow-status",
+        choices=("success", "failure", "cancelled", "skipped"),
+    )
     return parser
 
 
@@ -178,6 +202,56 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 0
 
+        if args.command == "report":
+            if args.junit.is_file():
+                test_result = parse_junit_xml(args.junit)
+            else:
+                test_result = TestResult(
+                    total=0,
+                    passed=0,
+                    failed=0,
+                    errors=0,
+                    skipped=0,
+                    duration_seconds=0,
+                    failures=(),
+                    source="unavailable",
+                )
+            _write_json(args.output, test_result.to_dict(), args.overwrite)
+            print(
+                json.dumps(
+                    {
+                        "report": str(args.output),
+                        "source": test_result.source,
+                        **test_result.to_dict()["summary"],
+                    }
+                )
+            )
+            return 0
+
+        if args.command == "github-report":
+            if not args.repository:
+                raise ValueError("--repository or GITHUB_REPOSITORY is required.")
+            pull_request = args.pull_request or _pull_request_from_event()
+            if pull_request is None:
+                raise ValueError("--pull-request or a pull_request event is required.")
+            token = os.environ.get("GITHUB_TOKEN")
+            if not token:
+                raise ValueError("GITHUB_TOKEN environment variable is required.")
+            run_url = args.run_url or _workflow_run_url(args.repository)
+            action = publish_report(
+                GitHubSettings(
+                    repository=args.repository,
+                    pull_request=pull_request,
+                    token=token,
+                    api_url=args.api_url,
+                    run_url=run_url,
+                ),
+                str(args.report),
+                args.workflow_status,
+            )
+            print(json.dumps({"comment": action, "pull_request": pull_request}))
+            return 0
+
         plan = TestPlan.from_dict(json.loads(_read_text(args.plan)))
         generated = TestGenerator(provider_from_environment()).generate(
             plan,
@@ -199,15 +273,40 @@ def main(argv: list[str] | None = None) -> int:
     except (
         FileExistsError,
         GenerationError,
+        GitHubError,
         HealingError,
         PlanningError,
         ProviderError,
+        ReportError,
         ValueError,
         OSError,
         json.JSONDecodeError,
     ) as exc:
         print(f"autopilot: {exc}", file=sys.stderr)
         return 2
+
+
+def _pull_request_from_event() -> int | None:
+        event_path = os.environ.get("GITHUB_EVENT_PATH")
+        if not event_path:
+            return None
+        try:
+            event = json.loads(Path(event_path).read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            return None
+        if not isinstance(event, dict):
+            return None
+        pull_request = event.get("pull_request")
+        number = pull_request.get("number") if isinstance(pull_request, dict) else None
+        return number if isinstance(number, int) and number > 0 else None
+
+
+def _workflow_run_url(repository: str) -> str | None:
+        run_id = os.environ.get("GITHUB_RUN_ID")
+        server_url = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
+        if not run_id or not repository:
+            return None
+        return f"{server_url}/{repository}/actions/runs/{run_id}"
 
 
 if __name__ == "__main__":

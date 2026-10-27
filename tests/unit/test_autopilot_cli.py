@@ -192,3 +192,36 @@ def test_cli_heal_writes_review_only_proposal_with_mocked_provider(
     assert result["applied"] is False
     assert result["uniqueness"] == "not_checked"
     assert json.loads(capsys.readouterr().out)["applied"] is False
+
+
+def test_cli_report_converts_junit_and_marks_missing_report_unavailable(
+    tmp_path: Path,
+    capsys,
+):
+    junit = tmp_path / "junit.xml"
+    junit.write_text(
+        '<testsuite tests="1"><testcase classname="test_home" name="test_title"/></testsuite>',
+        encoding="utf-8",
+    )
+    output = tmp_path / "test-results.json"
+
+    assert cli.main(["report", "--junit", str(junit), "--output", str(output)]) == 0
+    result = json.loads(output.read_text(encoding="utf-8"))
+    assert result["source"] == "junit"
+    assert result["summary"]["passed"] == 1
+    capsys.readouterr()
+
+    missing_output = tmp_path / "unavailable.json"
+    missing_junit = tmp_path / "missing.xml"
+    assert cli.main(
+        [
+            "report",
+            "--junit",
+            str(missing_junit),
+            "--output",
+            str(missing_output),
+        ]
+    ) == 0
+    unavailable = json.loads(missing_output.read_text(encoding="utf-8"))
+    assert unavailable["source"] == "unavailable"
+    assert json.loads(capsys.readouterr().out)["source"] == "unavailable"

@@ -1,0 +1,149 @@
+name: Selenium Autopilot Tests
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  test:
+    name: Run Selenium tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out pull request code without persisting credentials
+        if: github.event_name == 'pull_request_target'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Check out requested revision
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install project
+        run: uv sync --locked
+
+      - name: Run tests and collect JUnit results
+        id: tests
+        continue-on-error: true
+        env:
+          AUTOPILOT_ARTIFACTS_DIR: artifacts
+        run: |
+          mkdir -p artifacts
+          uv run pytest -m "not live_site" \
+            -p autopilot.pytest_plugin \
+            --junitxml=artifacts/junit.xml
+
+      - name: Normalize test report
+        if: always()
+        run: |
+          mkdir -p artifacts
+          if [ -f artifacts/junit.xml ]; then
+            uv run autopilot report \
+              --junit artifacts/junit.xml \
+              --output artifacts/test-results.json \
+              --overwrite || rm -f artifacts/test-results.json
+          fi
+          if [ ! -f artifacts/test-results.json ]; then
+            uv run autopilot report \
+              --junit artifacts/junit-not-produced.xml \
+              --output artifacts/test-results.json \
+              --overwrite
+          fi
+
+      - name: Upload test and diagnostic artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selenium-test-results
+          path: artifacts/
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Fail job when tests failed
+        if: steps.tests.outcome == 'failure'
+        run: exit 1
+
+  publish-report:
+    name: Publish pull request summary
+    if: always() && github.event_name == 'pull_request_target'
+    needs: [test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Check out trusted base revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install trusted reporting code
+        run: uv sync --locked
+
+      - name: Download test artifacts
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: selenium-test-results
+          path: artifacts
+
+      - name: Publish or update report comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_API_URL: ${{ github.api_url }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+          TEST_JOB_STATUS: ${{ needs.test.result }}
+        run: |
+          if [ -f artifacts/junit.xml ]; then
+            uv run autopilot report \
+              --junit artifacts/junit.xml \
+              --output artifacts/test-results.json \
+              --overwrite || rm -f artifacts/test-results.json
+          fi
+          if [ ! -f artifacts/test-results.json ]; then
+            uv run autopilot report \
+              --junit artifacts/junit-not-produced.xml \
+              --output artifacts/test-results.json \
+              --overwrite
+          fi
+          uv run autopilot github-report \
+            --report artifacts/test-results.json \
+            --pull-request "$PULL_REQUEST_NUMBER" \
+            --workflow-status "$TEST_JOB_STATUS"
