@@ -28,6 +28,18 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install agent-spec dependencies
+        run: npm ci
+
+      - name: Run agent-spec parser regression tests
+        run: npm run test:agent-specs
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -46,11 +58,17 @@ jobs:
       - name: Install project
         run: uv sync --locked
 
+      - name: Validate lockfile and package build
+        run: |
+          uv lock --check
+          uv build
+
       - name: Run tests and collect JUnit results
         id: tests
         continue-on-error: true
         env:
           AUTOPILOT_ARTIFACTS_DIR: artifacts
+          AUTOPILOT_REQUIRE_BROWSER: "1"
         run: |
           mkdir -p artifacts
           uv run pytest -m "not live_site" \

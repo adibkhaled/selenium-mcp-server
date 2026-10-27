@@ -97,3 +97,20 @@ If pull request comments are not published for fork contributions, check reposit
 Locally, convert JUnit output with `uv run autopilot report --junit artifacts/junit.xml --output artifacts/test-results.json`. Publish a report with `uv run autopilot github-report --report artifacts/test-results.json --repository owner/repo --pull-request 123`; provide a short-lived token with issue-comment permission as `GITHUB_TOKEN`. The command updates its existing marked comment rather than posting duplicates. No GitHub token is required to run tests or parse JUnit locally.
 
 Phase 5 does not create GitHub Actions runs through the API or open repair pull requests. Healing proposals remain review-only and must be applied and validated manually before they could be considered for a proposed PR.
+
+## Regression Validation and Integration Tests (Phase 6)
+
+The regression suite covers both Python and TypeScript. Integration tests exercise the offline requirements-to-generated-project-to-JUnit-report flow and the failure-diagnosis-to-review-only-healing flow. A separate Selenium integration test drives a temporary local HTML page in headless Chrome; it does not access a live website or require model credentials. Local runs skip only this browser test when Chrome/WebDriver cannot start. CI sets `AUTOPILOT_REQUIRE_BROWSER=1`, so a missing or unusable browser fails the job instead of silently skipping the check.
+
+Install the Python and Node dependencies, then run the same checks locally:
+
+```powershell
+uv sync --locked
+npm ci
+uv run pytest -m "not live_site"
+npm run test:agent-specs
+uv lock --check
+uv build
+```
+
+The non-live-site pytest selection includes `integration` tests and excludes only tests explicitly marked `live_site`. Integration coverage uses a fake WebDriver to execute generated project code, then validates the resulting JUnit report; the local-page browser test separately verifies real locator, input, click, and wait behavior when Chrome is available. The GitHub Actions workflow runs the Python suite, TypeScript parser tests, lockfile check, and package build, and uploads test diagnostics even when a test fails.
