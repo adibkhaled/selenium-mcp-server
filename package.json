@@ -1,0 +1,16 @@
+{
+  "name": "selenium-autopilot-agent-specs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:agent-specs": "tsc --project tsconfig.agent-specs.json",
+    "test:agent-specs": "npm run build:agent-specs && node --test .build/agent_specs/parse-agent-spec.test.js"
+  },
+  "dependencies": {
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "typescript": "^5.9.3"
+  }
+}

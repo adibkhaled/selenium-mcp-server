@@ -1,5 +1,8 @@
 openspec
-.github
+.github/*
+!.github/agents/
+.github/agents/*
+!.github/agents/*.agent.md
 .venv/
 __pycache__/
 *.py[cod]
@@ -7,4 +10,6 @@ __pycache__/
 .pytest_cache/
 build/
 dist/
+.build/
+node_modules/
 *doc.md
