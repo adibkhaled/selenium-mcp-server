@@ -105,3 +105,90 @@ def test_cli_does_not_replace_existing_plan_without_flag(tmp_path: Path, monkeyp
     assert exit_code == 2
     assert output.read_text(encoding="utf-8") == "keep existing"
     assert "Pass --overwrite" in capsys.readouterr().err
+
+
+def test_cli_analyze_is_deterministic_and_does_not_initialize_provider(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    failure_report = tmp_path / "failure.json"
+    failure_report.write_text(
+        json.dumps(
+            {
+                "exception_type": "NoSuchElementException",
+                "message": "no such element: #submit",
+                "locator_strategy": "css",
+                "locator_value": "#submit",
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        cli,
+        "provider_from_environment",
+        lambda: (_ for _ in ()).throw(AssertionError("analysis must not use a provider")),
+    )
+    output = tmp_path / "analysis.json"
+
+    assert cli.main(["analyze", "--report", str(failure_report), "--output", str(output)]) == 0
+
+    result = json.loads(output.read_text(encoding="utf-8"))
+    assert result["category"] == "locator_drift"
+    assert result["confidence"] > 0
+    assert "locator_drift" in capsys.readouterr().out.lower()
+
+
+def test_cli_heal_writes_review_only_proposal_with_mocked_provider(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    report_path = tmp_path / "failure.json"
+    report_path.write_text(
+        json.dumps(
+            {
+                "exception_type": "NoSuchElementException",
+                "message": "no such element: #submit",
+                "test_file": "tests/test_login.py",
+                "locator_strategy": "css",
+                "locator_value": "#submit",
+            }
+        ),
+        encoding="utf-8",
+    )
+    source_path = tmp_path / "test_login.py"
+    source_path.write_text("locator = '#submit'\n", encoding="utf-8")
+    provider = SequenceProvider(
+        [
+            json.dumps(
+                {
+                    "new_locator": "[data-testid='submit-login']",
+                    "strategy": "css",
+                    "rationale": "The captured DOM shows the stable test id.",
+                    "confidence": 0.8,
+                    "risks": [],
+                }
+            )
+        ]
+    )
+    monkeypatch.setattr(cli, "provider_from_environment", lambda: provider)
+    output_path = tmp_path / "proposal.json"
+
+    assert cli.main(
+        [
+            "heal",
+            "--report",
+            str(report_path),
+            "--source",
+            str(source_path),
+            "--output",
+            str(output_path),
+        ]
+    ) == 0
+
+    result = json.loads(output_path.read_text(encoding="utf-8"))
+    assert result["human_review_required"] is True
+    assert result["applied"] is False
+    assert result["uniqueness"] == "not_checked"
+    assert json.loads(capsys.readouterr().out)["applied"] is False

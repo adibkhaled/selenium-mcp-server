@@ -63,4 +63,23 @@ uv run autopilot generate `
 
 Install the project's Python environment with `uv sync`, configure Chrome, then run generated tests from the output directory using `uv run --directory generated_tests pytest`. The standalone generated project also includes a `pyproject.toml` and a headless Chrome fixture.
 
-The planner records ambiguities rather than choosing expected behavior. The generator creates tests only from the supplied plan. AI healing, GitHub integration, and CI reporting remain future phases.
+The planner records ambiguities rather than choosing expected behavior. The generator creates tests only from the supplied plan.
+
+## Failure Analysis and Healing Proposals (Phase 4)
+
+Provide a failure report as JSON with `exception_type` and `message`; optional fields include `traceback`, `browser`, `url`, `failed_action`, test identity, screenshot/DOM paths, `locator_strategy` and `locator_value`, `assertion_failure`, `test_data_validated`, and `browser_started`.
+
+```powershell
+uv run autopilot analyze `
+  --report artifacts/failure.json `
+  --output artifacts/failure-analysis.json
+
+uv run autopilot heal `
+  --report artifacts/failure.json `
+  --source tests/test_login.py `
+  --output artifacts/healing-proposal.json
+```
+
+`analyze` is deterministic and does not contact an LLM. It classifies evidence as locator drift, synchronization, application defect, invalid test data, environment, or unknown, and returns confidence, evidence, and next steps in the shape described by [failure-analysis.schema.json](schemas/failure-analysis.schema.json). `heal` is limited to locator-drift reports with a current locator; the provider is asked for an evidence-based candidate using the source and, when provided, DOM snapshot. The proposal follows [healing-proposal.schema.json](schemas/healing-proposal.schema.json), shows a diff made by replacing exactly one Python string literal matching the old locator value, and never modifies source or runs tests. Without an attached live WebDriver, uniqueness is explicitly `not_checked` and confidence is capped. With a WebDriver, the candidate must match exactly one element or proposal creation fails.
+
+Every proposal requires human review. A generated diff is not a validated repair: `applied` remains false and `validation` remains `not_run`. The system does not remove or alter assertions, change expected behavior, or claim that a test passed. Review the report and candidate against approved requirements and DOM evidence, apply any accepted change manually, then run the affected test and relevant regressions yourself. GitHub integration and CI reporting are not implemented yet.
