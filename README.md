@@ -5,7 +5,7 @@ The `autopilot` Python package is a deterministic Selenium wrapper that can be u
 ```python
 from autopilot import Autopilot, AutopilotConfig, capture_diagnostics
 
-config = AutopilotConfig(base_url="https://example.test", timeout=10)
+config = AutopilotConfig(base_url="https://adibqasolutions.com", timeout=10)
 with Autopilot(config=config) as agent:
     agent.open("/login")
     agent.get_by_label("Email").fill("test@example.test")
