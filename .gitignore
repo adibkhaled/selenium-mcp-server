@@ -1,4 +1,7 @@
 openspec
+.env
+.env.*
+!.env.example
 .github/*
 !.github/agents/
 .github/agents/*

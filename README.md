@@ -29,14 +29,13 @@ uv sync
 ## Create and run tests for your web app
 
 1. Write down the page URL and the user actions and results you want to test. Include acceptance criteria and use a test environment, not production. Do not include real passwords or other secrets. You can start with [the sample requirements](examples/requirements/login.md).
-2. Configure an AI provider in the VS Code terminal. For the default OpenAI-compatible provider, set your model and API key (keep the key private):
+2. Create a local `.env` file from the example:
 
    ```powershell
-   $env:AUTOPILOT_LLM_MODEL = "gpt-4o-mini"
-   $env:AUTOPILOT_LLM_API_KEY = "your-api-key"
+   Copy-Item .env.example .env
    ```
 
-   For a local provider, set `AUTOPILOT_LLM_BASE_URL` and `AUTOPILOT_LLM_MODEL` instead. For example, a local OpenAI-compatible service might use `http://localhost:11434/v1`.
+   Set `AUTOPILOT_LLM_API_KEY` in `.env` to your provider key and keep the file private; `.env` is excluded from Git. The default OpenAI-compatible provider uses `https://api.openai.com/v1` and `gpt-4o-mini`. For a local provider, set `AUTOPILOT_LLM_BASE_URL` and `AUTOPILOT_LLM_MODEL` instead; for example, a local OpenAI-compatible service might use `http://localhost:11434/v1`. Existing process environment variables take precedence, which allows deployment and GitHub Actions settings to override local defaults.
 3. Create a test plan. Replace the sample path with your requirements file:
 
    ```powershell

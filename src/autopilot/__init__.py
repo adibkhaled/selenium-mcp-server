@@ -1,3 +1,7 @@
+from .config import load_environment
+
+load_environment()
+
 from .browser import Autopilot, AutopilotConfig
 from .diagnostics import DiagnosticsReport, capture_diagnostics
 from .generation import GeneratedProject, GenerationError, TestGenerator
