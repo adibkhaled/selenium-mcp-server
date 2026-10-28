@@ -1,0 +1,38 @@
+SELENIUM AUTOPILOT - FEATURES AND DEVELOPMENT PHASES
+
+Phase 1 - Selenium browser automation
+The Python autopilot package wraps Selenium and Chrome. It supports browser startup and cleanup, URL navigation, role/name, label, test-ID, CSS, and XPath locators, and explicit-wait assertions for visibility, text, and URL. Optional diagnostics can capture screenshots, page DOM, and metadata. Locators report ambiguous matches rather than silently selecting the first result.
+
+Phase 2 - Agent specifications
+The TypeScript parser reads Markdown agent definitions, validates YAML front matter and common field types, and extracts instructions and examples. The repository also contains Copilot agent definitions for automation coordination, test planning, test generation, and test healing. The parser reads definitions; it does not execute agents. MCP-backed journey recording is not implemented.
+
+Phase 3 - Test planning and generation
+The autopilot CLI can send requirements and optional source files to a configured OpenAI-compatible provider and save a validated JSON test plan. It can generate a separate pytest/Selenium project with Page Objects from a reviewed plan. Generated files are syntax checked and constrained to expected paths and imports; the tool does not run generated code or guarantee that generated tests are correct. Review URLs, locators, data, and assertions before running them.
+
+Planning may send the requirements and source text you provide to your configured provider. Do not include secrets or information you are not permitted to share. Remote providers must use HTTPS; local HTTP is allowed for loopback addresses.
+
+Phase 4 - Failure analysis and healing proposals
+The analyze command classifies a supplied failure report and returns evidence, confidence, and suggested next steps. The heal command can suggest a locator change for supported locator-drift reports. It produces a review-only proposal and diff; it does not edit source code, change assertions, or run tests. A person must review and apply any accepted change, then run the test and relevant regressions.
+
+Phase 5 - Test reports and GitHub Actions
+The project includes a GitHub Actions workflow for running tests and uploading JUnit reports and diagnostics. A separate job can publish or update a pull-request summary comment. Local commands can convert JUnit output to JSON and publish a summary with a GitHub token. The workflow does not create repair commits, branches, or pull requests. Diagnostic artifacts may contain page content; avoid real credentials and sensitive production data.
+
+Phase 6 - Tests and integration validation
+The test suite includes Python unit tests, TypeScript parser tests, and integration tests for planning/generation/reporting and failure analysis/healing. A browser integration test uses a temporary local page with headless Chrome; it does not need a live website or AI credentials.
+
+To run the repository's checks from its root:
+
+    uv sync --locked
+    npm ci
+    uv run pytest -m "not live_site"
+    npm run test:agent-specs
+    uv lock --check
+    uv build
+
+CLI commands:
+    autopilot plan
+    autopilot generate
+    autopilot analyze
+    autopilot heal
+    autopilot report
+    autopilot github-report
