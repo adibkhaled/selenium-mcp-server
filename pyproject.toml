@@ -3,11 +3,42 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "selenium-mcp-server"
+name = "selenium-autopilot"
 version = "0.1.0"
-description = "A local MCP server for browser automation with Selenium"
+description = "AI-powered Selenium test automation framework with MCP integration"
 readme = "README.md"
 requires-python = ">=3.10"
+
+license = "MIT"
+
+authors = [
+    { name = "Adib Bin Khaled" }
+]
+
+keywords = [
+    "selenium",
+    "test-automation",
+    "AI",
+    "MCP",
+    "pytest",
+    "browser-automation",
+    "test-generation"
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Software Development :: Quality Assurance",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: MIT License",
+]
+
 dependencies = [
     "mcp>=1.0.0,<2.0.0",
     "selenium>=4.18.0",
@@ -15,15 +46,30 @@ dependencies = [
 ]
 
 [project.scripts]
-selenium-mcp-server = "selenium_mcp_server.server:main"
 autopilot = "autopilot.cli:main"
 
+[project.urls]
+Homepage = "https://github.com/adibkhaled/selenium-mcp-server"
+Repository = "https://github.com/adibkhaled/selenium-mcp-server"
+Issues = "https://github.com/adibkhaled/selenium-mcp-server/issues"
+
 [tool.hatch.build.targets.wheel]
-packages = ["src/selenium_mcp_server", "src/autopilot"]
+packages = ["src/autopilot"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+    "/pyproject.toml"
+]
 
 [dependency-groups]
 dev = [
     "pytest>=8.0",
+    "build>=1.2.0",
+    "twine>=5.0.0",
 ]
 
 [tool.pytest.ini_options]

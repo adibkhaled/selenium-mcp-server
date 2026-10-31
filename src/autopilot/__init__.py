@@ -1,10 +1,40 @@
+"""
+Selenium Autopilot
+------------------
+AI-powered Selenium test automation framework.
+
+Provides:
+- Browser automation
+- AI-powered test generation
+- Test planning
+- Failure analysis and self-healing
+- Diagnostics and reporting
+- OpenAI-compatible LLM integration
+"""
+
+__version__ = "0.1.0"
+
+# Environment configuration
 from .config import load_environment
 
 load_environment()
 
+# Browser automation
 from .browser import Autopilot, AutopilotConfig
+from .locators import Locator
+from .waits import AutopilotTimeoutError
+
+# Diagnostics
 from .diagnostics import DiagnosticsReport, capture_diagnostics
-from .generation import GeneratedProject, GenerationError, TestGenerator
+
+# Test generation
+from .generation import (
+    GeneratedProject,
+    GenerationError,
+    TestGenerator,
+)
+
+# Failure analysis and self-healing
 from .healing import (
     FailureAnalysis,
     FailureAnalyzer,
@@ -14,38 +44,73 @@ from .healing import (
     HealingProposal,
     propose_locator_healing,
 )
-from .locators import Locator
-from .planning import PlanningError, TestPlan, TestPlanner, TestScenario
-from .provider import OpenAICompatibleProvider, ProviderError
-from .reporting import ReportError, TestFailure, TestResult, load_test_result, parse_junit_xml
-from .waits import AutopilotTimeoutError
+
+# Test planning
+from .planning import (
+    PlanningError,
+    TestPlan,
+    TestPlanner,
+    TestScenario,
+)
+
+# LLM providers
+from .provider import (
+    OpenAICompatibleProvider,
+    ProviderError,
+)
+
+# Test reporting
+from .reporting import (
+    ReportError,
+    TestFailure,
+    TestResult,
+    load_test_result,
+    parse_junit_xml,
+)
+
 
 __all__ = [
+    # Version
+    "__version__",
+
+    # Browser automation
     "Autopilot",
     "AutopilotConfig",
     "AutopilotTimeoutError",
+    "Locator",
+
+    # Diagnostics
     "DiagnosticsReport",
+    "capture_diagnostics",
+
+    # Test generation
+    "GeneratedProject",
+    "GenerationError",
+    "TestGenerator",
+
+    # Failure analysis and self-healing
     "FailureAnalysis",
     "FailureAnalyzer",
     "FailureCategory",
     "FailureReport",
-    "GeneratedProject",
-    "GenerationError",
     "HealingError",
     "HealingProposal",
-    "Locator",
-    "OpenAICompatibleProvider",
+    "propose_locator_healing",
+
+    # Test planning
     "PlanningError",
-    "ProviderError",
-    "ReportError",
-    "TestGenerator",
-    "TestFailure",
     "TestPlan",
     "TestPlanner",
-    "TestResult",
     "TestScenario",
-    "capture_diagnostics",
-    "propose_locator_healing",
+
+    # LLM providers
+    "OpenAICompatibleProvider",
+    "ProviderError",
+
+    # Reporting
+    "ReportError",
+    "TestFailure",
+    "TestResult",
     "load_test_result",
     "parse_junit_xml",
 ]
