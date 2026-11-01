@@ -27,7 +27,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          pytest -m "not integration and not live_site"
+          python -m pytest -m "not integration and not live_site"
 
       - name: Build package
         run: |

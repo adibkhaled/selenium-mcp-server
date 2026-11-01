@@ -65,7 +65,7 @@ include = [
     "/pyproject.toml"
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
     "pytest>=8.0",
     "build>=1.2.0",
