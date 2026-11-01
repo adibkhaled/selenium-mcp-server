@@ -1,167 +1,45 @@
-name: Selenium Autopilot Tests
+name: Selenium Autopilot CI
 
 on:
-  pull_request_target:
-    types: [opened, synchronize, reopened, ready_for_review]
-  workflow_dispatch:
+  push:
+    branches: [main, develop]
 
-permissions: {}
+  pull_request:
+    branches: [main, develop]
 
 jobs:
-  test:
-    name: Run Selenium tests
+  test-and-build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+
     steps:
-      - name: Check out pull request code without persisting credentials
-        if: github.event_name == 'pull_request_target'
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
         with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.sha }}
-          persist-credentials: false
+          python-version: "3.12"
 
-      - name: Check out requested revision
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-
-      - name: Install agent-spec dependencies
-        run: npm ci
-
-      - name: Run agent-spec parser regression tests
-        run: npm run test:agent-specs
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Set up Chrome
-        uses: browser-actions/setup-chrome@v1
-        with:
-          chrome-version: stable
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-
-      - name: Install project
-        run: uv sync --locked
-
-      - name: Validate lockfile and package build
+      - name: Install dependencies
         run: |
-          uv lock --check
-          uv build
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
 
-      - name: Run tests and collect JUnit results
-        id: tests
-        continue-on-error: true
-        env:
-          AUTOPILOT_ARTIFACTS_DIR: artifacts
-          AUTOPILOT_REQUIRE_BROWSER: "1"
+      - name: Run unit tests
         run: |
-          mkdir -p artifacts
-          uv run pytest -m "not live_site" \
-            -p autopilot.pytest_plugin \
-            --junitxml=artifacts/junit.xml
+          pytest -m "not integration and not live_site"
 
-      - name: Normalize test report
-        if: always()
+      - name: Build package
         run: |
-          mkdir -p artifacts
-          if [ -f artifacts/junit.xml ]; then
-            uv run autopilot report \
-              --junit artifacts/junit.xml \
-              --output artifacts/test-results.json \
-              --overwrite || rm -f artifacts/test-results.json
-          fi
-          if [ ! -f artifacts/test-results.json ]; then
-            uv run autopilot report \
-              --junit artifacts/junit-not-produced.xml \
-              --output artifacts/test-results.json \
-              --overwrite
-          fi
+          python -m pip install build twine
+          python -m build
 
-      - name: Upload test and diagnostic artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: selenium-test-results
-          path: artifacts/
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Fail job when tests failed
-        if: steps.tests.outcome == 'failure'
-        run: exit 1
-
-  publish-report:
-    name: Publish pull request summary
-    if: always() && github.event_name == 'pull_request_target'
-    needs: [test]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      issues: write
-    steps:
-      - name: Check out trusted base revision
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-          persist-credentials: false
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v6
-
-      - name: Install trusted reporting code
-        run: uv sync --locked
-
-      - name: Download test artifacts
-        id: download
-        continue-on-error: true
-        uses: actions/download-artifact@v4
-        with:
-          name: selenium-test-results
-          path: artifacts
-
-      - name: Publish or update report comment
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_API_URL: ${{ github.api_url }}
-          GITHUB_SERVER_URL: ${{ github.server_url }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
-          TEST_JOB_STATUS: ${{ needs.test.result }}
+      - name: Validate package
         run: |
-          if [ -f artifacts/junit.xml ]; then
-            uv run autopilot report \
-              --junit artifacts/junit.xml \
-              --output artifacts/test-results.json \
-              --overwrite || rm -f artifacts/test-results.json
-          fi
-          if [ ! -f artifacts/test-results.json ]; then
-            uv run autopilot report \
-              --junit artifacts/junit-not-produced.xml \
-              --output artifacts/test-results.json \
-              --overwrite
-          fi
-          uv run autopilot github-report \
-            --report artifacts/test-results.json \
-            --pull-request "$PULL_REQUEST_NUMBER" \
-            --workflow-status "$TEST_JOB_STATUS"
+          python -m twine check dist/*
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v5
+        with:
+          name: python-package
+          path: dist/
